@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="si">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Household Task Manager (පවුලේ කළමනාකරණ යෙදුම)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body class="bg-gray-100 font-sans">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        const translations = {
+            si: {
+                title: "ගෙදර වැඩ කළමනාකරු",
+                ownerMode: "හිමිකරු (Owner)",
+                maidMode: "සේවක (Maid)",
+                switchRole: "භූමිකාව මාරු කරන්න",
+                enterPin: "හිමිකරු PIN අංකය ඇතුළත් කරන්න",
+                submit: "ඇතුළත් කරන්න",
+                cancel: "අවලංගු කරන්න",
+                wrongPin: "වැරදි PIN අංකයකි!",
+                dailyRules: "දිනපතා කළ යුතු / නොකළ යුතු නීති (Daily Rules)",
+                addTask: "නව ටාස්ක් එකක් එකතු කරන්න",
+                taskName: "ටාස්ක් නම...",
+                add: "එතුළත් කරන්න",
+                completed: "අවසන් කළ",
+                pending: "කළ යුතු",
+                delete: "මකන්න",
+                noTasks: "ටාස්ක් නොමැත.",
+                doTitle: "කළ යුතු දේවල් (Do's)",
+                dontTitle: "නොකළ යුතු දේවල් (Don'ts)",
+                addNewRule: "නව නීතියක් එකතු කරන්න",
+                ruleType: "වර්ගය",
+                doRule: "කළ යුතු (Do)",
+                dontRule: "නොකළ යුතු (Don't)",
+                ruleText: "නීතිය මෙහි ලියන්න..."
+            },
+            ta: {
+                title: "வீட்டு வேலை மேலாளர்",
+                ownerMode: "உரிமையாளர் (Owner)",
+                maidMode: "வேலையாள் (Maid)",
+                switchRole: "பங்கை மாற்றுக",
+                enterPin: "உரிமையாளர் PIN ஐ உள்ளிடவும்",
+                submit: "சமர்ப்பிக்க",
+                cancel: "ரத்து செய்",
+                wrongPin: "தவறான PIN!",
+                dailyRules: "தினசரி செய்ய வேண்டிய / செய்யக்கூடாதவை",
+                addTask: "புதிய பணியைச் சேர்க்கவும்",
+                taskName: "பணி பெயர்...",
+                add: "சேர்",
+                completed: "முடிந்தது",
+                pending: "நிலுவையில்",
+                delete: "நீக்கு",
+                noTasks: "பணிகள் இல்லை.",
+                doTitle: "செய்ய வேண்டியவை (Do's)",
+                dontTitle: "செய்யக்கூடாதவை (Don'ts)",
+                addNewRule: "புதிய விதியைச் சேர்க்கவும்",
+                ruleType: "வகை",
+                doRule: "செய்ய வேண்டியது (Do)",
+                dontRule: "செய்யக்கூடாதது (Don't)",
+                ruleText: "விதியை உள்ளிடவும்..."
+            },
+            en: {
+                title: "Household Task Manager",
+                ownerMode: "Owner Mode",
+                maidMode: "Maid Mode",
+                switchRole: "Switch Role",
+                enterPin: "Enter Owner PIN",
+                submit: "Submit",
+                cancel: "Cancel",
+                wrongPin: "Incorrect PIN!",
+                dailyRules: "Daily Rules (Do's & Don'ts)",
+                addTask: "Add New Task",
+                taskName: "Task name...",
+                add: "Add Task",
+                completed: "Completed",
+                pending: "Pending",
+                delete: "Delete",
+                noTasks: "No tasks available.",
+                doTitle: "Do's",
+                dontTitle: "Don'ts",
+                addNewRule: "Add New Rule",
+                ruleType: "Type",
+                doRule: "Do",
+                dontRule: "Don't",
+                ruleText: "Enter rule text..."
+            }
+        };
+
+        function App() {
+            const [lang, setLang] = useState('si');
+            const [role, setRole] = useState('maid'); // 'owner' or 'maid'
+            const [showPinModal, setShowPinModal] = useState(false);
+            const [pinInput, setPinInput] = useState('');
+            const [pinError, setPinError] = useState(false);
+
+            const [tasks, setTasks] = useState(() => {
+                const saved = localStorage.getItem('household_tasks');
+                return saved ? JSON.parse(saved) : [
+                    { id: 1, text: "උදේ කෑම සකස් කිරීම / Prepare Breakfast", completed: false },
+                    { id: 2, text: "නිවස පිරිසිදු කිරීම / Clean the House", completed: false }
+                ];
+            });
+
+            const [rules, setRules] = useState(() => {
+                const saved = localStorage.getItem('household_rules');
+                return saved ? JSON.parse(saved) : [
+                    { id: 1, type: 'do', text: "පැන්ට්‍රි මේසය නිතරම පිරිසිදුව තබන්න" },
+                    { id: 2, type: 'dont', text: "අවසරයකින් තොරව ප්‍රධාන කාමරයට ඇතුළු නොවන්න" }
+                ];
+            });
+
+            const [newTaskText, setNewTaskText] = useState('');
+            const [newRuleText, setNewRuleText] = useState('');
+            const [newRuleType, setNewRuleType] = useState('do');
+
+            const t = translations[lang];
+
+            useEffect(() => {
+                localStorage.setItem('household_tasks', JSON.stringify(tasks));
+            }, [tasks]);
+
+            useEffect(() => {
+                localStorage.setItem('household_rules', JSON.stringify(rules));
+            }, [rules]);
+
+            const handleRoleSwitchAttempt = (targetRole) => {
+                if (targetRole === 'owner') {
+                    setShowPinModal(true);
+                    setPinInput('');
+                    setPinError(false);
+                } else {
+                    setRole('maid');
+                }
+            };
+
+            const handlePinSubmit = (e) => {
+                e.preventDefault();
+                if (pinInput === '0460') {
+                    setRole('owner');
+                    setShowPinModal(false);
+                    setPinError(false);
+                } else {
+                    setPinError(true);
+                }
+            };
+
+            const toggleTask = (id) => {
+                setTasks(tasks.map(task => task.id === id ? { ...task, completed: !task.completed } : task));
+            };
+
+            const addTask = (e) => {
+                e.preventDefault();
+                if (!newTaskText.trim()) return;
+                setTasks([...tasks, { id: Date.now(), text: newTaskText, completed: false }]);
+                setNewTaskText('');
+            };
+
+            const deleteTask = (id) => {
+                setTasks(tasks.filter(task => task.id !== id));
+            };
+
+            const addRule = (e) => {
+                e.preventDefault();
+                if (!newRuleText.trim()) return;
+                setRules([...rules, { id: Date.now(), type: newRuleType, text: newRuleText }]);
+                setNewRuleText('');
+            };
+
+            const deleteRule = (id) => {
+                setRules(rules.filter(rule => rule.id !== id));
+            };
+
+            return (
+                <div className="min-h-screen bg-slate-50 text-slate-800 pb-12">
+                    {/* Header */}
+                    <header className="bg-indigo-600 text-white shadow-md py-4 px-6 flex flex-wrap justify-between items-center gap-4">
+                        <h1 className="text-xl font-bold flex items-center gap-2">
+                            🏠 {t.title}
+                        </h1>
+                        <div className="flex items-center gap-3">
+                            {/* Language Selector */}
+                            <select 
+                                value={lang} 
+                                onChange={(e) => setLang(e.target.value)}
+                                className="bg-indigo-700 text-white text-sm rounded px-2 py-1 border border-indigo-500 focus:outline-none"
+                            >
+                                <option value="si">සිංහල</option>
+                                <option value="ta">தமிழ்</option>
+                                <option value="en">English</option>
+                            </select>
+
+                            {/* Role Toggle Buttons */}
+                            <div className="bg-indigo-800 p-1 rounded-lg flex gap-1">
+                                <button
+                                    onClick={() => handleRoleSwitchAttempt('maid')}
+                                    className={`px-3 py-1 text-sm rounded-md transition ${role === 'maid' ? 'bg-white text-indigo-900 font-semibold shadow' : 'text-indigo-200 hover:text-white'}`}
+                                >
+                                    {t.maidMode}
+                                </button>
+                                <button
+                                    onClick={() => handleRoleSwitchAttempt('owner')}
+                                    className={`px-3 py-1 text-sm rounded-md transition ${role === 'owner' ? 'bg-white text-indigo-900 font-semibold shadow' : 'text-indigo-200 hover:text-white'}`}
+                                >
+                                    {t.ownerMode}
+                                </button>
+                            </div>
+                        </div>
+                    </header>
+
+                    <main className="max-w-3xl mx-auto p-4 mt-4 space-y-6">
+                        {/* Status Bar */}
+                        <div className={`p-3 rounded-lg text-sm font-medium flex justify-between items-center ${role === 'owner' ? 'bg-amber-100 text-amber-800 border border-amber-300' : 'bg-emerald-100 text-emerald-800 border border-emerald-300'}`}>
+                            <span>🔒 Current Mode: <strong>{role === 'owner' ? t.ownerMode : t.maidMode}</strong></span>
+                            <span className="text-xs opacity-75">{role === 'owner' ? 'Full Control Enabled' : 'Task Completion Only'}</span>
+                        </div>
+
+                        {/* Persistent Daily Rules Section */}
+                        <section className="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+                            <h2 className="text-lg font-bold text-slate-700 mb-4 flex items-center gap-2">
+                                📌 {t.dailyRules}
+                            </h2>
+
+                            <div className="grid md:grid-cols-2 gap-4">
+                                {/* Do's */}
+                                <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3">
+                                    <h3 className="font-semibold text-emerald-800 text-sm mb-2">✅ {t.doTitle}</h3>
+                                    <ul className="space-y-2 text-sm">
+                                        {rules.filter(r => r.type === 'do').map(rule => (
+                                            <li key={rule.id} className="flex justify-between items-start bg-white p-2 rounded shadow-sm">
+                                                <span className="text-emerald-900">{rule.text}</span>
+                                                {role === 'owner' && (
+                                                    <button onClick={() => deleteRule(rule.id)} className="text-red-500 hover:text-red-700 text-xs ml-2">❌</button>
+                                                )}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+
+                                {/* Don'ts */}
+                                <div className="bg-rose-50 border border-rose-200 rounded-lg p-3">
+                                    <h3 className="font-semibold text-rose-800 text-sm mb-2">❌ {t.dontTitle}</h3>
+                                    <ul className="space-y-2 text-sm">
+                                        {rules.filter(r => r.type === 'dont').map(rule => (
+                                            <li key={rule.id} className="flex justify-between items-start bg-white p-2 rounded shadow-sm">
+                                                <span className="text-rose-900">{rule.text}</span>
+                                                {role === 'owner' && (
+                                                    <button onClick={() => deleteRule(rule.id)} className="text-red-500 hover:text-red-700 text-xs ml-2">❌</button>
+                                                )}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            </div>
+
+                            {/* Owner Rule Add Form */}
+                            {role === 'owner' && (
+                                <form onSubmit={addRule} className="mt-4 pt-4 border-t border-slate-100 flex flex-wrap gap-2">
+                                    <select 
+                                        value={newRuleType} 
+                                        onChange={(e) => setNewRuleType(e.target.value)}
+                                        className="border rounded px-3 py-2 text-sm bg-slate-50 focus:outline-none"
+                                    >
+                                        <option value="do">{t.doRule}</option>
+                                        <option value="dont">{t.dontRule}</option>
+                                    </select>
+                                    <input 
+                                        type="text" 
+                                        placeholder={t.ruleText}
+                                        value={newRuleText}
+                                        onChange={(e) => setNewRuleText(e.target.value)}
+                                        className="flex-1 border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                    />
+                                    <button type="submit" className="bg-indigo-600 text-white px-4 py-2 rounded text-sm hover:bg-indigo-700 transition">
+                                        + {t.add}
+                                    </button>
+                                </form>
+                            )}
+                        </section>
+
+                        {/* Daily Tasks Section */}
+                        <section className="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+                            <h2 className="text-lg font-bold text-slate-700 mb-4 flex items-center gap-2">
+                                ✅ Daily Tasks List
+                            </h2>
+
+                            {/* Owner Task Add Form */}
+                            {role === 'owner' && (
+                                <form onSubmit={addTask} className="mb-4 flex gap-2">
+                                    <input 
+                                        type="text" 
+                                        placeholder={t.taskName}
+                                        value={newTaskText}
+                                        onChange={(e) => setNewTaskText(e.target.value)}
+                                        className="flex-1 border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                    />
+                                    <button type="submit" className="bg-indigo-600 text-white px-4 py-2 rounded text-sm hover:bg-indigo-700 transition">
+                                        + {t.add}
+                                    </button>
+                                </form>
+                            )}
+
+                            {/* Tasks List */}
+                            <div className="space-y-2">
+                                {tasks.length === 0 ? (
+                                    <p className="text-slate-400 text-sm italic text-center py-4">{t.noTasks}</p>
+                                ) : (
+                                    tasks.map(task => (
+                                        <div key={task.id} className={`flex items-center justify-between p-3 rounded-lg border transition ${task.completed ? 'bg-slate-50 border-slate-200 opacity-75' : 'bg-white border-slate-200 shadow-sm'}`}>
+                                            <label className="flex items-center gap-3 cursor-pointer flex-1">
+                                                <input 
+                                                    type="checkbox" 
+                                                    checked={task.completed} 
+                                                    onChange={() => toggleTask(task.id)}
+                                                    className="w-5 h-5 text-indigo-600 rounded focus:ring-indigo-500 cursor-pointer"
+                                                />
+                                                <span className={`text-sm ${task.completed ? 'line-through text-slate-400' : 'text-slate-700 font-medium'}`}>
+                                                    {task.text}
+                                                </span>
+                                            </label>
+
+                                            <div className="flex items-center gap-2">
+                                                <span className={`text-xs px-2 py-1 rounded-full ${task.completed ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                                                    {task.completed ? t.completed : t.pending}
+                                                </span>
+                                                {role === 'owner' && (
+                                                    <button 
+                                                        onClick={() => deleteTask(task.id)}
+                                                        className="text-slate-400 hover:text-red-500 p-1 text-sm transition"
+                                                        title={t.delete}
+                                                    >
+                                                        🗑️
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </section>
+                    </main>
+
+                    {/* PIN Modal */}
+                    {showPinModal && (
+                        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+                            <div className="bg-white rounded-xl shadow-xl max-w-sm w-full p-6 space-y-4">
+                                <h3 className="text-lg font-bold text-slate-800 text-center">🔐 {t.enterPin}</h3>
+                                <form onSubmit={handlePinSubmit} className="space-y-4">
+                                    <input 
+                                        type="password" 
+                                        maxLength="4" 
+                                        placeholder="PIN (0460)"
+                                        value={pinInput}
+                                        onChange={(e) => setPinInput(e.target.value)}
+                                        autoFocus
+                                        className="w-full text-center text-2xl tracking-widest border rounded-lg py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                    />
+                                    {pinError && (
+                                        <p className="text-red-500 text-xs text-center font-medium">{t.wrongPin}</p>
+                                    )}
+                                    <div className="flex gap-2">
+                                        <button 
+                                            type="button" 
+                                            onClick={() => setShowPinModal(false)}
+                                            className="flex-1 bg-slate-100 text-slate-600 py-2 rounded-lg text-sm hover:bg-slate-200 transition"
+                                        >
+                                            {t.cancel}
+                                        </button>
+                                        <button 
+                                            type="submit" 
+                                            className="flex-1 bg-indigo-600 text-white py-2 rounded-lg text-sm hover:bg-indigo-700 transition font-medium"
+                                        >
+                                            {t.submit}
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    </script>
+</body>
+</html>
